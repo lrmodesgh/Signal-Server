@@ -6,29 +6,30 @@
 #include "common.h"
 #include "main.hh"
 
-void readLIDAR(FILE *fd, int hoffset, int voffset, int h, int w, int indx, double n, double e, double s, double west)
+void readLIDAR(FILE *fd, int hoffset, int voffset, int h, int w, int indx,
+	       double n, double e, double s, double west)
 {
-	int x=0,y=0,reads=0;
+	int x = 0, y = 0, reads = 0;
 	char line[150000];
-	char * pch;
+	char *pch;
 
 	// use offsets to determine middle lat/lon for 5 x 10k tiles
 	// TALL
-	if(voffset==0 && h==10000){
+	if (voffset == 0 && h == 10000) {
 		s = (s+n)/2;
-		h=5000;
+		h = 5000;
 	}
-	if(voffset==5000 && h==10000){
+	if (voffset == 5000 && h == 10000) {
 		n = (s+n)/2;
 	}
 	// WIDE
-	if(hoffset==0 && w==10000){
+	if (hoffset == 0 && w == 10000) {
 		e = (e+west)/2;
-		w=5000;
+		w = 5000;
 	}
-	if(hoffset==5000 && w==10000){
+	if (hoffset == 5000 && w == 10000) {
 		west = (e+west)/2;
-		w=5000;
+		w = 5000;
 	}
 
 	dem[indx].max_north=n;
@@ -36,82 +37,71 @@ void readLIDAR(FILE *fd, int hoffset, int voffset, int h, int w, int indx, doubl
 	dem[indx].min_north=s;
 	dem[indx].max_west=west;
 
-
 	if (dem[indx].max_west > max_west)
 		max_west = dem[indx].max_west;
 	if (dem[indx].min_west < min_west)
 		min_west = dem[indx].min_west;
 
-	if (max_west == -1)
+	if (max_west == -1) {
 		max_west = dem[indx].max_west;
-	else {
+	} else {
 		if (abs(dem[indx].max_west - max_west) < 180) {
 			if (dem[indx].max_west > max_west)
 				max_west = dem[indx].max_west;
-		}
-
-		else {
+		} else {
 			if (dem[indx].max_west < max_west)
 				max_west = dem[indx].max_west;
 		}
 	}
 
-	if (min_west == 360)
+	if (min_west == 360) {
 		min_west = dem[indx].min_west;
-
-	else {
+	} else {
 		if (fabs(dem[indx].min_west - min_west) < 180.0) {
 			if (dem[indx].min_west < min_west)
 				min_west = dem[indx].min_west;
-		}
-
-		else {
+		} else {
 			if (dem[indx].min_west > min_west)
 				min_west = dem[indx].min_west;
 		}
 	}
-	
 
 	for (y = h-1; y > -1; y--) {
-							x=w-1;
-							if (fgets(line, 150000, fd) != NULL) {
-								// do nothing until n rows have passed
-								if(y<voffset || voffset==0){
-									pch = strtok (line, " "); 
+		x = w-1;
+		if (fgets(line, 150000, fd) != NULL) {
+			// do nothing until n rows have passed
+			if (y < voffset || voffset == 0) {
+				pch = strtok(line, " ");
 
-									//dummy reads until we reach offset
-									// for 5000 offset, width must be 10e3
-									for(n=0;n<hoffset;n++){
-										pch = strtok(NULL, " ");
-									}
+				//dummy reads until we reach offset
+				// for 5000 offset, width must be 10e3
+				for (n = 0; n < hoffset; n++)
+					pch = strtok(NULL, " ");
 
-									while(pch != NULL && x > -1){
-										if(atoi(pch)<-999){
-											pch="0";
-										}
+				while (pch != NULL && x > -1) {
+					if (atoi(pch) < -999)
+						pch = "0";
 
-										dem[indx].data[y][x]=atoi(pch);	
-										dem[indx].signal[x][y] = 0;
-										dem[indx].mask[x][y] = 0;	
-										if (atoi(pch) > dem[indx].max_el){
-											dem[indx].max_el = atoi(pch);
-											max_elevation = atoi(pch);
-											}
-										if (atoi(pch) < dem[indx].min_el){
-											dem[indx].min_el = atoi(pch);
-											min_elevation = dem[indx].min_el;
-											}
-										//}
-
-										x--; 
-										pch = strtok (NULL, " "); 
-									}	//while
-								} //voffset
-							}else{
-								fprintf(stdout,"LIDAR error @ x %d y %d indx %d\n",x,y,indx);
-							}//if
-				}//for
-
+					dem[indx].data[y][x] = atoi(pch);
+					dem[indx].signal[x][y] = 0;
+					dem[indx].mask[x][y] = 0;
+					if (atoi(pch) > dem[indx].max_el) {
+						dem[indx].max_el = atoi(pch);
+						max_elevation = atoi(pch);
+					}
+					if (atoi(pch) < dem[indx].min_el) {
+						dem[indx].min_el = atoi(pch);
+						min_elevation = dem[indx].min_el;
+					}
+					x--;
+					pch = strtok(NULL, " ");
+				}//while
+			}//voffset
+		} else {
+			fprintf(stdout, "LIDAR error @ x %d y %d indx %d\n",
+					x, y, indx);
+		}//if
+	}//for
 }
 
 int loadLIDAR(char *filenames)
