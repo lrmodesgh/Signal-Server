@@ -106,189 +106,182 @@ void readLIDAR(FILE *fd, int hoffset, int voffset, int h, int w, int indx,
 
 int loadLIDAR(char *filenames)
 {
-	/*  This function reads either 9 LIDAR tiles of n rows and n columns in ASCII grid format OR a single super tile composed of 2 or more tiles.
-		The tile must have WGS84 bounds in the header in the order: WEST,SOUTH,EAST,NORTH
-		ncols        5000
-		nrows        5000
-		xllcorner    -2.291359
-		yllcorner    51.788295
-		xurcorner    -2.146674
-		yurcorner    51.878474
-		cellsize     2
-		NODATA_value  -9999
-
-		Tiles must be entered in the format -lid tile1.asc,tile2.asc,tile3.asc
-	*/
+	/*
+	 * This function reads either 9 LIDAR tiles of n rows and n columns
+	 * in ASCII grid format OR a single super tile composed of 2 or more
+	 * tiles. The tile must have WGS84 bounds in the header in the order:
+	 * WEST,SOUTH,EAST,NORTH
+	 *	ncols        5000
+	 *	nrows        5000
+	 *	xllcorner    -2.291359
+	 *	yllcorner    51.788295
+	 *	xurcorner    -2.146674
+	 *	yurcorner    51.878474
+	 *	cellsize     2
+	 *	NODATA_value  -9999
+	 *
+	 *	Tiles must be entered in the format
+	 *
+	 *	    -lid tile1.asc,tile2.asc,tile3.asc
+	 */
 	char *filename;
 	char *files[4]; // 4 tiles
-	int x, y, cellsize,indx=0,fc=0,hoffset=0,voffset=0,pos;
+	int x, y, cellsize, indx = 0, fc = 0, hoffset = 0, voffset = 0, pos;
 	double xll, yll, xur, yur;
 	char found, free_page = 0, jline[20], lid_file[255],	
-	    path_plus_name[255], *junk = NULL;
+	     path_plus_name[255], *junk = NULL;
 	char line[50000];
 	char * pch;
 	FILE *fd;
 
-
 	// test for multiple files
 	filename = strtok(filenames, " ,");
-	while (filename != NULL)
-	{
+	while (filename != NULL) {
 		files[fc] = filename;
 		filename = strtok(NULL, " ,");	
 		fc++;
 	}
 
-	while (indx<fc) {
+	while (indx < fc) {
 		fd = fopen(files[indx], "rb");
 
 		if (fd != NULL) {
 			if (debug) {
-				fprintf(stdout,"Loading \"%s\" into page %d...\n",files[indx], indx);
+				fprintf(stdout, "Loading \"%s\" into page %d...\n", files[indx], indx);
 				fflush(stdout);
 			}
 			if (fgets(line, 19, fd) != NULL) {
-			  pch = strtok (line," "); 
-   			  pch = strtok (NULL, " "); 
-			  width=atoi(pch);
+				pch = strtok (line," ");
+				pch = strtok (NULL, " ");
+				width = atoi(pch);
 			}
-			if (fgets(line, 19, fd) != NULL) {
-   			  height=atoi(pch);
-			}
-			fgets(line, 24, fd); // 
+			if (fgets(line, 19, fd) != NULL)
+				height = atoi(pch);
+			fgets(line, 24, fd);
 
 			if (fgets(line, 24, fd) != NULL) {
-			  //xll=atof(pch);
-			  sscanf(pch, "%lf", &xll);
+				//xll=atof(pch);
+				sscanf(pch, "%lf", &xll);
 			}
-			fgets(line, 24, fd); // 
+			fgets(line, 24, fd);
 			if (fgets(line, 24, fd) != NULL) {
-			  //yll=atof(pch);
-			  sscanf(pch, "%lf", &yll);
+				//yll=atof(pch);
+				sscanf(pch, "%lf", &yll);
 			}
-			
-			fgets(line, 24, fd); // 
-			
+
+			fgets(line, 24, fd);
+
 			if (fgets(line, 24, fd) != NULL) {
-			  //xur=atof(pch);
-			  sscanf(pch, "%lf", &xur);
+				//xur=atof(pch);
+				sscanf(pch, "%lf", &xur);
 			}
-			
-			fgets(line, 24, fd); // 
-			
+
+			fgets(line, 24, fd);
+
 			if (fgets(line, 24, fd) != NULL) {
-			  //yur=atof(pch);
-			  sscanf(pch, "%lf", &yur);
+				//yur=atof(pch);
+				sscanf(pch, "%lf", &yur);
 			}
-			
-			fgets(line, 15, fd); // 
-			
-			if (fgets(line, 15, fd) != NULL) {
-			  cellsize=atoi(pch);
-			}
+
+			fgets(line, 15, fd);
+
+			if (fgets(line, 15, fd) != NULL)
+				cellsize = atoi(pch);
 			// LIDAR 2m @ 54000 PPD
-			if(cellsize==2){
-				ippd=5000;
-				MAXRAD=15;
+			if (cellsize == 2) {
+				ippd = 5000;
+				MAXRAD = 15;
 			}
 			// LIDAR 1m @ 108000 PPD!
-			if(cellsize==1){
-				ippd=10000;
-				MAXRAD=10;
+			if (cellsize == 1) {
+				ippd = 10000;
+				MAXRAD = 10;
 			}
 
-			if(xur<eastoffset)
-				eastoffset=xur;
-			if(xll>westoffset)
-				westoffset=xll;
+			if (xur < eastoffset)
+				eastoffset = xur;
+			if (xll > westoffset)
+				westoffset = xll;
 
-			if(debug){
-				fprintf(stdout,"PRE yll %.7f yur %.7f xur %.7f xll %.7f delta %.6f\n",yll,yur,xur,xll,delta);
-			}
-			
+			if (debug)
+				fprintf(stdout, "PRE yll %.7f yur %.7f xur %.7f xll %.7f delta %.6f\n", yll, yur, xur, xll, delta);
+
 			// Greenwich straddling hack
-			if(xll < 0 && xur > 0){
+			if (xll < 0 && xur > 0) {
 				xll = (xur - xll); // full width
-				xur=0.0; // budge it along so it's west of greenwich
-				delta=eastoffset; // add to Tx longitude later
-			}else{
-			
+				xur = 0.0; // budge it along so it's west of greenwich
+				delta = eastoffset; // add to Tx longitude later
+			} else {
 				// Transform WGS84 longitudes into 'west' values as society finishes east of Greenwich ;)
-				if(xll > 0){
-					xll=360-xll;
-				}
-				if(xur > 0){
-					xur=360-xur;
-				}
-				if(xll < 0){
-					xll=xll*-1;
-				}
-				if(xur < 0){
-					xur=xur*-1;
-				}
+				if (xll > 0)
+					xll = 360-xll;
+				if(xur > 0)
+					xur = 360-xur;
+				if(xll < 0)
+					xll = xll * -1;
+				if(xur < 0)
+					xur = xur * -1;
+			}
+			if (debug)
+				fprintf(stdout, "POST yll %.7f yur %.7f xur %.7f xll %.7f delta %.6f\n", yll, yur, xur, xll, delta);
 
-			}
-			
-			if(debug){
-				fprintf(stdout,"POST yll %.7f yur %.7f xur %.7f xll %.7f delta %.6f\n",yll,yur,xur,xll,delta);
-			}
-			
 			if (yll < min_north)
-				min_north=yll;
+				min_north = yll;
 			if (yur > max_north)		
-				max_north=yur;
+				max_north = yur;
 
 			fgets(line, 30, fd); // NODATA
-			pos=ftell(fd);
+			pos = ftell(fd);
 
 			// tile 0 [x| ]
-			if(debug){
-				fprintf(stdout,"readLIDAR(fd,%d,%d,%d,%d,%d,%.4f,%.4f,%.4f,%.4f)\n",0,0,height,width,indx,yur,xur,yll,xll);	
-			}
-			readLIDAR(fd,0,0,height,width,indx,yur,xur,yll,xll);
+			if (debug)
+				fprintf(stdout, "readLIDAR(fd,%d,%d,%d,%d,%d,%.4f,%.4f,%.4f,%.4f)\n", 0, 0, height, width, indx, yur, xur, yll, xll);
 
+			readLIDAR(fd, 0, 0, height, width, indx, yur, xur, yll,
+					xll);
 			//rewind
-			fseek(fd,pos,SEEK_SET);
+			fseek(fd, pos, SEEK_SET);
 
 			// tile 1 [ |x]
-			if(width==10000){
+			if (width == 10000) {
 				indx++;
-				if(debug){
-					fprintf(stdout,"readLIDAR(fd,%d,%d,%d,%d,%d,%.4f,%.4f,%.4f,%.4f)\n",5000,0,height,width,indx,yur,xur,yll,xll);	
-				}
-				readLIDAR(fd,5000,0,height,width,indx,yur,xur,yll,xll);
-			}
+				if (debug)
+					fprintf(stdout, "readLIDAR(fd,%d,%d,%d,%d,%d,%.4f,%.4f,%.4f,%.4f)\n", 5000, 0, height, width, indx, yur, xur, yll, xll);
 
+				readLIDAR(fd, 5000, 0, height, width, indx,
+						yur, xur, yll, xll);
+			}
 			//rewind
-			fseek(fd,pos,SEEK_SET);
+			fseek(fd, pos, SEEK_SET);
 
 			// tile 2 [x | ]
-			if(height==10000){
+			if (height == 10000) {
 				indx++;
-				if(debug){
-					fprintf(stdout,"readLIDAR(fd,%d,%d,%d,%d,%d,%.4f,%.4f,%.4f,%.4f)\n",0,5000,height,width,indx,yur,xur,yll,xll);	
-				}
-				readLIDAR(fd,0,5000,height,width,indx,yur,xur,yll,xll);
-			}
+				if (debug)
+					fprintf(stdout, "readLIDAR(fd,%d,%d,%d,%d,%d,%.4f,%.4f,%.4f,%.4f)\n", 0, 5000, height, width, indx, yur, xur, yll, xll);
 
+				readLIDAR(fd, 0, 5000, height, width, indx,
+						yur, xur, yll, xll);
+			}
 			//rewind
-			fseek(fd,pos,SEEK_SET);
+			fseek(fd, pos, SEEK_SET);
 
 			// tile 3 [ |x]
-			if(width==10000 && height==10000){
+			if (width == 10000 && height == 10000){
 				indx++;
-				if(debug){
-					fprintf(stdout,"readLIDAR(fd,%d,%d,%d,%d,%d,%.4f,%.4f,%.4f,%.4f)\n",5000,5000,height,width,indx,yur,xur,yll,xll);	
-				}
-				readLIDAR(fd,5000,5000,height,width,indx,yur,xur,yll,xll);
+				if (debug)
+					fprintf(stdout, "readLIDAR(fd,%d,%d,%d,%d,%d,%.4f,%.4f,%.4f,%.4f)\n", 5000, 5000, height, width, indx, yur, xur, yll, xll);
+
+				readLIDAR(fd, 5000, 5000, height, width, indx,
+						yur, xur, yll, xll);
 			}
 			fclose(fd);
 
-			fprintf(stdout,"LIDAR LOADED %d x %d\n",width,height);
-		} // if (fd != NULL)
-		else
+			fprintf(stdout, "LIDAR LOADED %d x %d\n", width, height);
+		} else {
 			return -1;
-	indx++;
+		}
+		indx++;
 	} // filename(s)
 }
 
