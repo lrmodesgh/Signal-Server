@@ -283,6 +283,8 @@ int loadLIDAR(char *filenames)
 		}
 		indx++;
 	} // filename(s)
+
+	return 0;
 }
 
 int LoadSDF_SDF(char *name)
