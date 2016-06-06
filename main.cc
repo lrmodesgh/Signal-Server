@@ -1574,7 +1574,16 @@ int main(int argc, char *argv[])
 
 	/* Load the required tiles */
 	if(lidar){
-		loadLIDAR(lidar_tiles);
+		int err;
+
+		err = loadLIDAR(lidar_tiles);
+		if (err) {
+			fprintf(stderr, "Couldn't find one or more of the "
+				"lidar files. Please ensure their paths are\n"
+				"correct and try again.\n");
+			exit(EXIT_FAILURE);
+		}
+
 		if(debug){
 			fprintf(stdout,"%.4f,%.4f,%.4f,%.4f\n",max_north,min_west,min_north,max_west);
 		}
