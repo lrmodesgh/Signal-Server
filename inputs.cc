@@ -126,8 +126,8 @@ int loadLIDAR(char *filenames)
 	 */
 	char *filename;
 	char *files[4]; // 4 tiles
-	int x, y, cellsize, indx = 0, fc = 0, hoffset = 0, voffset = 0, pos;
-	double xll, yll, xur, yur;
+	int x, y, indx = 0, fc = 0, hoffset = 0, voffset = 0, pos;
+	double xll, yll, xur, yur, cellsize;
 	char found, free_page = 0, jline[20], lid_file[255],	
 	     path_plus_name[255], *junk = NULL;
 	char line[50000];
@@ -186,14 +186,14 @@ int loadLIDAR(char *filenames)
 			fgets(line, 15, fd);
 
 			if (fgets(line, 15, fd) != NULL)
-				cellsize = atoi(pch);
+				cellsize = strtod(pch, NULL);
 			// LIDAR 2m @ 54000 PPD
-			if (cellsize == 2) {
+			if (cellsize == 2.0) {
 				ippd = 5000;
 				MAXRAD = 15;
 			}
 			// LIDAR 1m @ 108000 PPD!
-			if (cellsize == 1) {
+			if (cellsize == 1.0) {
 				ippd = 10000;
 				MAXRAD = 10;
 			}
