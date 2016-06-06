@@ -126,7 +126,8 @@ int loadLIDAR(char *filenames)
 	 */
 	char *filename;
 	char *files[4]; // 4 tiles
-	int x, y, indx = 0, fc = 0, hoffset = 0, voffset = 0, pos;
+	int x, y, indx = 0, fc = 0, hoffset = 0, voffset = 0, pos,
+	    dem_alloced = 0;
 	double xll, yll, xur, yur, cellsize;
 	char found, free_page = 0, jline[20], lid_file[255],	
 	     path_plus_name[255], *junk = NULL;
@@ -154,6 +155,15 @@ int loadLIDAR(char *filenames)
 				pch = strtok (line," ");
 				pch = strtok (NULL, " ");
 				width = atoi(pch);
+
+				if (!dem_alloced) {
+					IPPD = width;
+					ARRAYSIZE = (MAXPAGES * IPPD) + 10;
+
+					do_allocs();
+					dem_alloced = 1;
+				}
+
 			}
 			if (fgets(line, 19, fd) != NULL)
 				height = atoi(pch);
@@ -187,16 +197,16 @@ int loadLIDAR(char *filenames)
 
 			if (fgets(line, 15, fd) != NULL)
 				cellsize = strtod(pch, NULL);
+
+			// LIDAR 10m @ 10800 PPD
+			if (cellsize == 10.0)
+				MAXRAD = 30;
 			// LIDAR 2m @ 54000 PPD
-			if (cellsize == 2.0) {
-				ippd = 5000;
+			if (cellsize == 2.0)
 				MAXRAD = 15;
-			}
 			// LIDAR 1m @ 108000 PPD!
-			if (cellsize == 1.0) {
-				ippd = 10000;
+			if (cellsize == 1.0)
 				MAXRAD = 10;
-			}
 
 			if (xur < eastoffset)
 				eastoffset = xur;
@@ -243,37 +253,44 @@ int loadLIDAR(char *filenames)
 			fseek(fd, pos, SEEK_SET);
 
 			// tile 1 [ |x]
-			if (width == 10000) {
+			if (width == 2000 ||
+			    width == 10000 ||
+			    width == 10082) {
 				indx++;
 				if (debug)
-					fprintf(stdout, "readLIDAR(fd,%d,%d,%d,%d,%d,%.4f,%.4f,%.4f,%.4f)\n", 5000, 0, height, width, indx, yur, xur, yll, xll);
+					fprintf(stdout, "readLIDAR(fd,%d,%d,%d,%d,%d,%.4f,%.4f,%.4f,%.4f)\n", width / 2, 0, height, width, indx, yur, xur, yll, xll);
 
-				readLIDAR(fd, 5000, 0, height, width, indx,
-						yur, xur, yll, xll);
+				readLIDAR(fd, width / 2, 0, height, width,
+						indx, yur, xur, yll, xll);
 			}
 			//rewind
 			fseek(fd, pos, SEEK_SET);
 
 			// tile 2 [x | ]
-			if (height == 10000) {
+			if (height == 2000 ||
+			    height == 10000 ||
+			    height == 10082) {
 				indx++;
 				if (debug)
-					fprintf(stdout, "readLIDAR(fd,%d,%d,%d,%d,%d,%.4f,%.4f,%.4f,%.4f)\n", 0, 5000, height, width, indx, yur, xur, yll, xll);
+					fprintf(stdout, "readLIDAR(fd,%d,%d,%d,%d,%d,%.4f,%.4f,%.4f,%.4f)\n", 0, height / 2, height, width, indx, yur, xur, yll, xll);
 
-				readLIDAR(fd, 0, 5000, height, width, indx,
-						yur, xur, yll, xll);
+				readLIDAR(fd, 0, height / 2, height, width,
+						indx, yur, xur, yll, xll);
 			}
 			//rewind
 			fseek(fd, pos, SEEK_SET);
 
 			// tile 3 [ |x]
-			if (width == 10000 && height == 10000){
+			if ((width == 2000 && height == 2000) ||
+			    (width == 10000 && height == 10000) ||
+			    (width == 10082 && height == 10082)) {
 				indx++;
 				if (debug)
-					fprintf(stdout, "readLIDAR(fd,%d,%d,%d,%d,%d,%.4f,%.4f,%.4f,%.4f)\n", 5000, 5000, height, width, indx, yur, xur, yll, xll);
+					fprintf(stdout, "readLIDAR(fd,%d,%d,%d,%d,%d,%.4f,%.4f,%.4f,%.4f)\n", width / 2, height / 2, height, width, indx, yur, xur, yll, xll);
 
-				readLIDAR(fd, 5000, 5000, height, width, indx,
-						yur, xur, yll, xll);
+				readLIDAR(fd, width / 2, height / 2, height,
+						width, indx, yur, xur, yll,
+						xll);
 			}
 			fclose(fd);
 
