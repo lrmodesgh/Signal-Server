@@ -981,6 +981,24 @@ void alloc_path(void)
 	path.distance = new double[ARRAYSIZE];
 }
 
+void do_allocs(void)
+{
+	int i;
+
+	alloc_elev();
+	alloc_dem();
+	alloc_path();
+
+	for (i = 0; i < MAXPAGES; i++) {
+		dem[i].min_el = 32768;
+		dem[i].max_el = -32768;
+		dem[i].min_north = 90;
+		dem[i].max_north = -90;
+		dem[i].min_west = 360;
+		dem[i].max_west = -1;
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	int x, y, z = 0, min_lat, min_lon, max_lat, max_lon,
@@ -1006,9 +1024,7 @@ int main(int argc, char *argv[])
 
 	if (strstr(argv[0], "signalserverLIDAR")) {
 		MAXPAGES = 4; 
-		IPPD = 5000; // // 2m resolution default
-		ARRAYSIZE = 20010;
-		ppd=IPPD;
+		lidar = 1;
 	}
 
 	strncpy(ss_name, "Signal Server\0", 14);
@@ -1073,12 +1089,12 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 * Now we know what mode we are running in, we can allocate various
-	 * data structures.
+	 * If we're not called as signalserverLIDAR we can allocate various
+	 * memory now. For LIDAR stuff we need to wait until we've pasred
+	 * the headers in the .asc file to know how much memory to allocate.
 	 */
-	alloc_elev();
-	alloc_dem();
-	alloc_path();
+	if (!lidar)
+		do_allocs();
 
 	y = argc - 1;
 	kml = 0;
@@ -1128,15 +1144,6 @@ int main(int argc, char *argv[])
 	tx_site[0].lon = 361.0;
 	tx_site[1].lat = 91.0;
 	tx_site[1].lon = 361.0;
-
-	for (x = 0; x < MAXPAGES; x++) {
-		dem[x].min_el = 32768;
-		dem[x].max_el = -32768;
-		dem[x].min_north = 90;
-		dem[x].max_north = -90;
-		dem[x].min_west = 360;
-		dem[x].max_west = -1;
-	}
 
 	/* Scan for command line arguments */
 
@@ -1211,7 +1218,10 @@ int main(int argc, char *argv[])
 		if (strcmp(argv[x], "-res") == 0) {
 			z = x + 1;
 
-			if (z <= y && argv[z][0] && argv[z][0] != '-') {
+			if (!lidar &&
+			    z <= y &&
+			    argv[z][0] &&
+			    argv[z][0] != '-') {
 				sscanf(argv[z], "%d", &ippd);
 
 				switch (ippd) {
@@ -1574,7 +1584,17 @@ int main(int argc, char *argv[])
 
 	/* Load the required tiles */
 	if(lidar){
-		loadLIDAR(lidar_tiles);
+		int err;
+
+		err = loadLIDAR(lidar_tiles);
+		if (err) {
+			fprintf(stderr, "Couldn't find one or more of the "
+				"lidar files. Please ensure their paths are\n"
+				"correct and try again.\n");
+			exit(EXIT_FAILURE);
+		}
+		ippd = IPPD;
+
 		if(debug){
 			fprintf(stdout,"%.4f,%.4f,%.4f,%.4f\n",max_north,min_west,min_north,max_west);
 		}
